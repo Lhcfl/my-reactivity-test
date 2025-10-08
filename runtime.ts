@@ -39,10 +39,32 @@ declare global {
   }
 }
 
+const genNodes = (c: unknown): (HTMLElement | Text)[] => {
+  if (typeof c == "string") {
+    return [document.createTextNode(c)];
+  }
+  if (typeof c === "function") {
+    return genNodes(c());
+  }
+  if (typeof c === "number") {
+    return [document.createTextNode(String(c))];
+  }
+  if (Array.isArray(c)) {
+    return c.flatMap(genNodes);
+  }
+  if (c == null) {
+    return [];
+  }
+  if (c instanceof HTMLElement) {
+    return [c];
+  }
+  return [document.createTextNode(String(c))];
+};
+
 export function h(
   tag: null | string | Function,
   props: null | Record<string, any>,
-  ...children: any[]
+  ...children: unknown[]
 ): () => HTMLElement | null {
   if (typeof tag === "function") {
     return tag(props);
@@ -69,12 +91,16 @@ export function h(
         const r = () => {
           const val = typeof v == "function" ? v() : v;
 
+          console.log("setting prop", { key, val, el });
+
           if (tag === "input" && (key === "value" || key === "checked")) {
             (el as any)[key] = val;
           } else {
             el.setAttribute(key, val);
           }
         };
+
+        r();
 
         listens.forEach((x) => window.addEventListener(`changed:${x}`, r));
       }
@@ -84,45 +110,14 @@ export function h(
       const listens = new Set<number>();
       setCurrentComputation(listens);
 
-      const r = () => {
-        for (const ch of children) {
-          if (typeof ch === "string") {
-            el.appendChild(document.createTextNode(ch));
-          } else {
-            const genNodes = (c: unknown): (HTMLElement | Text)[] => {
-              if (typeof c == "string") {
-                return [document.createTextNode(c)];
-              }
-              if (typeof c === "function") {
-                return genNodes(c());
-              }
-              if (typeof c === "number") {
-                return [document.createTextNode(String(c))];
-              }
-              if (Array.isArray(c)) {
-                return c.flatMap(genNodes);
-              }
-              if (c == null) {
-                return [];
-              }
-              if (c instanceof HTMLElement) {
-                return [c];
-              }
-              return [document.createTextNode(String(c))];
-            };
-
-            const c = ch();
-            console.log({ appending: c });
-            genNodes(c).forEach((node) => el.appendChild(node));
-          }
-        }
-      };
+      const r = () => genNodes(children).forEach((node) => el.appendChild(node));
 
       r();
 
       listens.forEach((x) =>
         window.addEventListener(`changed:${x}`, () => {
           el.innerHTML = "";
+          console.log("re-rendering", { el });
           r();
         })
       );

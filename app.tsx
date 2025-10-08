@@ -27,6 +27,11 @@ const TodoList = () => {
     setText("");
   }
 
+  const removeItem = (index: number) => {
+    const newItems = items().filter((_, i) => i !== index);
+    setItems(newItems);
+  }
+
   return (
     <div>
       <h2>Todo List</h2>
@@ -37,8 +42,8 @@ const TodoList = () => {
       />
       <button onclick={addItem}>Add</button>
       <ul>
-        {() => items().map((item) => (
-          <li>{() => item}</li>
+        {() => items().map((item, index) => (
+          <li>{() => item}, <button onclick={() => removeItem(index)}>Remove</button></li>
         ))}
       </ul>
     </div>
